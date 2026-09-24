@@ -121,6 +121,54 @@ body:JSON.stringify({status:value})
 load();
 }
 
+<script>
+let lastOrderId = null;
+
+async function checkNewOrders(){
+  try{
+    const r = await fetch("/api/orders");
+    const orders = await r.json();
+
+    if(!orders.length) return;
+
+    const newest = orders[0];
+
+    if(lastOrderId === null){
+      lastOrderId = newest.id;
+      return;
+    }
+
+    if(newest.id !== lastOrderId){
+      lastOrderId = newest.id;
+
+      alert(
+        "🔔 NEW ORDER!\n\n" +
+        "Customer: " + newest.customer.name +
+        "\nMobile: " + newest.customer.mobile +
+        "\nTotal: ₹" + newest.total +
+        "\nOrder ID: " + newest.id
+      );
+
+      if("Notification" in window){
+        if(Notification.permission === "granted"){
+          new Notification("🔔 Anjali Super Mart",{
+            body:"New order received from " + newest.customer.name
+          });
+        }
+      }
+    }
+  }catch(e){
+    console.log("Order check error:",e.message);
+  }
+}
+
+if("Notification" in window && Notification.permission === "default"){
+  Notification.requestPermission();
+}
+
+checkNewOrders();
+setInterval(checkNewOrders,3000);
+</script>
 load();
 setInterval(load,5000);
 
