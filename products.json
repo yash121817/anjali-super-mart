@@ -1,0 +1,18 @@
+[
+  {"id":1,"name":"Tomato","category":"Vegetables","price":20,"unit":"1 kg","emoji":"🍅"},
+  {"id":2,"name":"Potato","category":"Vegetables","price":25,"unit":"1 kg","emoji":"🥔"},
+  {"id":3,"name":"Onion","category":"Vegetables","price":30,"unit":"1 kg","emoji":"🧅"},
+  {"id":4,"name":"Carrot","category":"Vegetables","price":40,"unit":"1 kg","emoji":"🥕"},
+  {"id":5,"name":"Apple","category":"Fruits","price":120,"unit":"1 kg","emoji":"🍎"},
+  {"id":6,"name":"Banana","category":"Fruits","price":50,"unit":"1 dozen","emoji":"🍌"},
+  {"id":7,"name":"Amul Milk","category":"Dairy","price":60,"unit":"1 litre","emoji":"🥛"},
+  {"id":8,"name":"Paneer","category":"Dairy","price":90,"unit":"200 g","emoji":"🧀"},
+  {"id":9,"name":"Lays","category":"Snacks","price":20,"unit":"1 pack","emoji":"🥔"},
+  {"id":10,"name":"Biscuits","category":"Snacks","price":30,"unit":"1 pack","emoji":"🍪"},
+  {"id":11,"name":"Cooking Oil","category":"Grocery","price":140,"unit":"1 litre","emoji":"🫗"},
+  {"id":12,"name":"Rice","category":"Grocery","price":65,"unit":"1 kg","emoji":"🍚"},
+  {"id":13,"name":"Sugar","category":"Grocery","price":50,"unit":"1 kg","emoji":"🍚"},
+  {"id":14,"name":"Atta","category":"Grocery","price":55,"unit":"1 kg","emoji":"🌾"},
+  {"id":15,"name":"Cold Drink","category":"Drinks","price":40,"unit":"750 ml","emoji":"🥤"},
+  {"id":16,"name":"Bread","category":"Bakery","price":40,"unit":"1 pack","emoji":"🍞"}
+]

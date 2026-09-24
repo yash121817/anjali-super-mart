@@ -1,0 +1,2348 @@
+cat > index.js <<'EOF'
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+
+const app = express();
+const PORT = 3000;
+
+const productsFile = path.join(__dirname, "products.json");
+const ordersFile = path.join(__dirname, "orders.json");
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+function readJSON(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(file, JSON.stringify(fallback, null, 2));
+      return fallback;
+    }
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function saveJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
+// Products
+app.get("/api/products", (req, res) => {
+  const products = readJSON(productsFile, []);
+  res.json(products);
+});
+
+// Create order
+app.post("/api/orders", (req, res) => {
+  const { customer, items, total } = req.body;
+
+  if (!customer || !customer.name || !customer.mobile || !customer.address) {
+    return res.status(400).json({
+      success: false,
+      message: "Customer details required"
+    });
+  }
+
+  if (!items || !items.length) {
+    return res.status(400).json({
+      success: false,
+      message: "Cart empty"
+    });
+  }
+
+  const orders = readJSON(ordersFile, []);
+
+  const order = {
+    id: "ASM" + Date.now(),
+    customer,
+    items,
+    total,
+    status: "New",
+    createdAt: new Date().toISOString()
+  };
+
+  orders.unshift(order);
+  saveJSON(ordersFile, orders);
+
+  res.json({
+    success: true,
+    order
+  });
+});
+
+// Owner orders
+app.get("/api/orders", (req, res) => {
+  const orders = readJSON(ordersFile, []);
+  res.json(orders);
+});
+
+// Update order status
+app.put("/api/orders/:id", (req, res) => {
+  const orders = readJSON(ordersFile, []);
+  const order = orders.find(o => o.id === req.params.id);
+
+  if (!order) {
+    return res.status(404).json({
+      success: false,
+      message: "Order not found"
+    });
+  }
+
+  order.status = req.body.status || order.status;
+  saveJSON(ordersFile, orders);
+
+  res.json({
+    success: true,
+    order
+  });
+});
+
+app.get("/owner", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "owner.html"));
+});
+
+app.listen(PORT, () => {
+  console.log("");
+  console.log("=================================");
+  console.log("     ANJALI SUPER MART");
+  console.log("=================================");
+  console.log("Server: http://localhost:" + PORT);
+  console.log("Shop:   http://localhost:" + PORT);
+  console.log("Owner:  http://localhost:" + PORT + "/owner");
+  console.log("=================================");
+});
+EOF
+
+cat > products.json <<'EOF'
+[
+  {
+    "id": 1,
+    "name": "Tomato",
+    "category": "Vegetables",
+    "price": 20,
+    "unit": "kg",
+    "emoji": "🍅"
+  },
+  {
+    "id": 2,
+    "name": "Potato",
+    "category": "Vegetables",
+    "price": 25,
+    "unit": "kg",
+    "emoji": "🥔"
+  },
+  {
+    "id": 3,
+    "name": "Onion",
+    "category": "Vegetables",
+    "price": 30,
+    "unit": "kg",
+    "emoji": "🧅"
+  },
+  {
+    "id": 4,
+    "name": "Carrot",
+    "category": "Vegetables",
+    "price": 40,
+    "unit": "kg",
+    "emoji": "🥕"
+  },
+  {
+    "id": 5,
+    "name": "Apple",
+    "category": "Fruits",
+    "price": 120,
+    "unit": "kg",
+    "emoji": "🍎"
+  },
+  {
+    "id": 6,
+    "name": "Banana",
+    "category": "Fruits",
+    "price": 50,
+    "unit": "dozen",
+    "emoji": "🍌"
+  },
+  {
+    "id": 7,
+    "name": "Amul Milk",
+    "category": "Dairy",
+    "price": 60,
+    "unit": "litre",
+    "emoji": "🥛"
+  },
+  {
+    "id": 8,
+    "name": "Paneer",
+    "category": "Dairy",
+    "price": 90,
+    "unit": "200g",
+    "emoji": "🧀"
+  },
+  {
+    "id": 9,
+    "name": "Lays",
+    "category": "Snacks",
+    "price": 20,
+    "unit": "pack",
+    "emoji": "🥔"
+  },
+  {
+    "id": 10,
+    "name": "Biscuits",
+    "category": "Snacks",
+    "price": 30,
+    "unit": "pack",
+    "emoji": "🍪"
+  },
+  {
+    "id": 11,
+    "name": "Cooking Oil",
+    "category": "Grocery",
+    "price": 140,
+    "unit": "litre",
+    "emoji": "🫗"
+  },
+  {
+    "id": 12,
+    "name": "Rice",
+    "category": "Grocery",
+    "price": 65,
+    "unit": "kg",
+    "emoji": "🍚"
+  }
+]
+EOF
+
+cat > orders.json <<'EOF'
+[]
+EOF
+
+cat > public/index.html <<'EOF'
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Anjali Super Mart</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f6f7;
+  color:#222;
+  padding-bottom:90px;
+}
+
+header{
+  background:#0b8f45;
+  color:white;
+  padding:14px;
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.logo{
+  font-size:21px;
+  font-weight:bold;
+}
+
+.location{
+  font-size:12px;
+  margin-top:4px;
+}
+
+.cartTop{
+  background:white;
+  color:#0b8f45;
+  border:0;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+.search{
+  margin-top:12px;
+  width:100%;
+  padding:13px;
+  border:0;
+  border-radius:10px;
+  font-size:15px;
+  outline:none;
+}
+
+.banner{
+  margin:12px;
+  padding:20px;
+  border-radius:15px;
+  background:#dff7e8;
+}
+
+.banner h2{
+  color:#08783a;
+  margin-bottom:6px;
+}
+
+.categories{
+  display:flex;
+  gap:9px;
+  overflow-x:auto;
+  padding:5px 12px 12px;
+}
+
+.cat{
+  background:white;
+  border:1px solid #ddd;
+  padding:9px 13px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+
+.cat.active{
+  background:#0b8f45;
+  color:white;
+}
+
+.title{
+  padding:5px 12px 10px;
+  font-size:20px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  padding:0 12px;
+}
+
+.card{
+  background:white;
+  border-radius:13px;
+  padding:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+
+.pic{
+  height:100px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:58px;
+  background:#fafafa;
+  border-radius:10px;
+}
+
+.name{
+  font-weight:bold;
+  margin-top:10px;
+}
+
+.unit{
+  color:#777;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.price{
+  font-weight:bold;
+  font-size:17px;
+  margin-top:7px;
+}
+
+.add{
+  width:100%;
+  margin-top:8px;
+  padding:9px;
+  border:1px solid #0b8f45;
+  background:white;
+  color:#0b8f45;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+.add:hover{
+  background:#0b8f45;
+  color:white;
+}
+
+.bottomCart{
+  position:fixed;
+  bottom:12px;
+  left:12px;
+  right:12px;
+  background:#0b8f45;
+  color:white;
+  padding:15px;
+  border-radius:13px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 4px 15px rgba(0,0,0,.25);
+  z-index:30;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:50;
+  overflow:auto;
+}
+
+.modalBox{
+  background:white;
+  margin:30px auto;
+  width:94%;
+  max-width:500px;
+  border-radius:16px;
+  padding:18px;
+}
+
+.close{
+  float:right;
+  border:0;
+  background:#eee;
+  width:35px;
+  height:35px;
+  border-radius:50%;
+}
+
+.cartItem{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #eee;
+}
+
+.qty{
+  display:flex;
+  gap:7px;
+  align-items:center;
+}
+
+.qty button{
+  width:30px;
+  height:30px;
+  border:0;
+  border-radius:7px;
+  background:#0b8f45;
+  color:white;
+}
+
+.form input,
+.form textarea{
+  width:100%;
+  margin-top:10px;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:9px;
+  font-size:15px;
+}
+
+.form textarea{
+  min-height:80px;
+}
+
+.place{
+  width:100%;
+  margin-top:15px;
+  padding:14px;
+  border:0;
+  border-radius:10px;
+  background:#0b8f45;
+  color:white;
+  font-size:16px;
+  font-weight:bold;
+}
+
+.empty{
+  text-align:center;
+  padding:30px;
+  color:#777;
+}
+
+@media(min-width:700px){
+  .grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="top">
+
+<div>
+<div class="logo">🛒 Anjali Super Mart</div>
+<div class="location">📍 Amanora, Hadapsar, Pune</div>
+</div>
+
+<button class="cartTop" onclick="openCart()">
+🛒 Cart <span id="cartCount">0</span>
+</button>
+
+</div>
+
+<input
+id="search"
+class="search"
+placeholder="🔍 Search vegetables, fruits, grocery..."
+oninput="renderProducts()"
+>
+
+</header>
+
+<div class="banner">
+
+<h2>Daily Grocery 🛍️</h2>
+
+<p>Fresh products • Best prices • Easy ordering</p>
+
+</div>
+
+<div class="categories" id="categories"></div>
+
+<h2 class="title">Products</h2>
+
+<div class="grid" id="products"></div>
+
+<div class="bottomCart" onclick="openCart()">
+
+<div>
+🛒 <b><span id="bottomCount">0</span> Items</b>
+</div>
+
+<div>
+₹<span id="bottomTotal">0</span> → View Cart
+</div>
+
+</div>
+
+<!-- CART -->
+
+<div class="modal" id="cartModal">
+
+<div class="modalBox">
+
+<button class="close" onclick="closeCart()">✕</button>
+
+<h2>🛒 Your Cart</h2>
+
+<div id="cartItems"></div>
+
+<h3 style="margin-top:15px">
+Total: ₹<span id="cartTotal">0</span>
+</h3>
+
+<div class="form">
+
+<h3 style="margin-top:20px">Delivery Details</h3>
+
+<input id="customerName" placeholder="Your Name">
+
+<input id="customerMobile" placeholder="Mobile Number" type="tel">
+
+<textarea id="customerAddress" placeholder="Delivery Address"></textarea>
+
+<button class="place" onclick="placeOrder()">
+📲 Place Order
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let products = [];
+let cart = [];
+let selectedCategory = "All";
+
+async function loadProducts(){
+
+  const res = await fetch("/api/products");
+
+  products = await res.json();
+
+  createCategories();
+
+  renderProducts();
+
+}
+
+function createCategories(){
+
+  const categories = ["All", ...new Set(products.map(p => p.category))];
+
+  const box = document.getElementById("categories");
+
+  box.innerHTML = categories.map(cat => `
+
+    <button
+      class="cat ${cat === selectedCategory ? "active" : ""}"
+      onclick="selectCategory('${cat}')"
+    >
+      ${cat}
+    </button>
+
+  `).join("");
+
+}
+
+function selectCategory(category){
+
+  selectedCategory = category;
+
+  createCategories();
+
+  renderProducts();
+
+}
+
+function renderProducts(){
+
+  const search = document
+    .getElementById("search")
+    .value
+    .toLowerCase();
+
+  let list = products.filter(p => {
+
+    const categoryMatch =
+      selectedCategory === "All" ||
+      p.category === selectedCategory;
+
+    const searchMatch =
+      p.name.toLowerCase().includes(search);
+
+    return categoryMatch && searchMatch;
+
+  });
+
+  const box = document.getElementById("products");
+
+  if(!list.length){
+
+    box.innerHTML =
+      `<div class="empty">Product नहीं मिला</div>`;
+
+    return;
+
+  }
+
+  box.innerHTML = list.map(p => `
+
+    <div class="card">
+
+      <div class="pic">${p.emoji}</div>
+
+      <div class="name">${p.name}</div>
+
+      <div class="unit">${p.unit}</div>
+
+      <div class="price">₹${p.price}</div>
+
+      <button class="add" onclick="addToCart(${p.id})">
+        + Add
+      </button>
+
+    </div>
+
+  `).join("");
+
+}
+
+function addToCart(id){
+
+  const product = products.find(p => p.id === id);
+
+  const existing = cart.find(item => item.id === id);
+
+  if(existing){
+
+    existing.qty++;
+
+  }else{
+
+    cart.push({
+      ...product,
+      qty:1
+    });
+
+  }
+
+  updateCart();
+
+}
+
+function increase(id){
+
+  const item = cart.find(i => i.id === id);
+
+  if(item){
+    item.qty++;
+  }
+
+  updateCart();
+
+  renderCart();
+
+}
+
+function decrease(id){
+
+  const item = cart.find(i => i.id === id);
+
+  if(!item) return;
+
+  item.qty--;
+
+  if(item.qty <= 0){
+
+    cart = cart.filter(i => i.id !== id);
+
+  }
+
+  updateCart();
+
+  renderCart();
+
+}
+
+function updateCart(){
+
+  const count =
+    cart.reduce((sum,item) => sum + item.qty,0);
+
+  const total =
+    cart.reduce((sum,item) => sum + item.price * item.qty,0);
+
+  document.getElementById("cartCount").textContent = count;
+
+  document.getElementById("bottomCount").textContent = count;
+
+  document.getElementById("bottomTotal").textContent = total;
+
+}
+
+function openCart(){
+
+  document.getElementById("cartModal").style.display = "block";
+
+  renderCart();
+
+}
+
+function closeCart(){
+
+  document.getElementById("cartModal").style.display = "none";
+
+}
+
+function renderCart(){
+
+  const box =
+    document.getElementById("cartItems");
+
+  if(!cart.length){
+
+    box.innerHTML =
+      `<div class="empty">Cart खाली है 🛒</div>`;
+
+    document.getElementById("cartTotal").textContent = "0";
+
+    return;
+
+  }
+
+  let total = 0;
+
+  box.innerHTML = cart.map(item => {
+
+    const itemTotal = item.price * item.qty;
+
+    total += itemTotal;
+
+    return `
+
+      <div class="cartItem">
+
+        <div>
+
+          <b>${item.emoji} ${item.name}</b>
+
+          <div>₹${item.price} × ${item.qty}</div>
+
+        </div>
+
+        <div class="qty">
+
+          <button onclick="decrease(${item.id})">−</button>
+
+          <b>${item.qty}</b>
+
+          <button onclick="increase(${item.id})">+</button>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join("");
+
+  document.getElementById("cartTotal").textContent = total;
+
+}
+
+async function placeOrder(){
+
+  if(!cart.length){
+
+    alert("Cart खाली है");
+
+    return;
+
+  }
+
+  const name =
+    document.getElementById("customerName").value.trim();
+
+  const mobile =
+    document.getElementById("customerMobile").value.trim();
+
+  const address =
+    document.getElementById("customerAddress").value.trim();
+
+  if(!name || !mobile || !address){
+
+    alert("Name, Mobile और Address भरें");
+
+    return;
+
+  }
+
+  const total =
+    cart.reduce(
+      (sum,item) => sum + item.price * item.qty,
+      0
+    );
+
+  const orderItems = cart.map(item => ({
+
+    id:item.id,
+    name:item.name,
+    price:item.price,
+    unit:item.unit,
+    qty:item.qty,
+    total:item.price * item.qty
+
+  }));
+
+  try{
+
+    const response = await fetch("/api/orders",{
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({
+
+        customer:{
+          name,
+          mobile,
+          address
+        },
+
+        items:orderItems,
+
+        total
+
+      })
+
+    });
+
+    const data = await response.json();
+
+    if(!data.success){
+
+      alert(data.message || "Order नहीं हुआ");
+
+      return;
+
+    }
+
+    const order = data.order;
+
+    let message =
+      `🛒 *Anjali Super Mart Order*%0A%0A`;
+
+    message +=
+      `Order ID: ${order.id}%0A`;
+
+    message +=
+      `Name: ${name}%0A`;
+
+    message +=
+      `Mobile: ${mobile}%0A`;
+
+    message +=
+      `Address: ${address}%0A%0A`;
+
+    message += `*Items:*%0A`;
+
+    orderItems.forEach(item => {
+
+      message +=
+        `${item.name} × ${item.qty} = ₹${item.total}%0A`;
+
+    });
+
+    message += `%0A*Total: ₹${total}*`;
+
+    const whatsapp =
+      "https://wa.me/916375889488?text=" + message;
+
+    alert(
+      "Order Successfully Placed ✅\n\nOrder ID: " +
+      order.id
+    );
+
+    cart = [];
+
+    updateCart();
+
+    closeCart();
+
+    window.open(whatsapp,"_blank");
+
+  }catch(error){
+
+    console.error(error);
+
+    alert(
+      "Server से connection नहीं हुआ ❌"
+    );
+
+  }
+
+}
+
+loadProducts();
+
+</script>
+
+</body>
+</html>
+EOF
+
+cat > public/owner.html <<'EOF'
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
+>
+
+<title>Anjali Super Mart - Owner</title>
+
+<style>
+
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f6f7;
+  margin:0;
+}
+
+header{
+  background:#0b8f45;
+  color:white;
+  padding:18px;
+}
+
+.container{
+  padding:15px;
+  max-width:900px;
+  margin:auto;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:12px;
+  box-shadow:0 2px 8px #ddd;
+}
+
+.status{
+  padding:7px;
+  border-radius:7px;
+  margin-top:10px;
+}
+
+button{
+  padding:9px 12px;
+  border:0;
+  border-radius:7px;
+  margin:4px;
+}
+
+.accept{
+  background:#0b8f45;
+  color:white;
+}
+
+.preparing{
+  background:#ffb000;
+}
+
+.delivered{
+  background:#333;
+  color:white;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>👨‍💼 Anjali Super Mart</h2>
+
+<p>Owner Order Panel</p>
+
+</header>
+
+<div class="container">
+
+<h2>Orders</h2>
+
+<div id="orders">Loading...</div>
+
+</div>
+
+<script>
+
+async function loadOrders(){
+
+  const res = await fetch("/api/orders");
+
+  const orders = await res.json();
+
+  const box = document.getElementById("orders");
+
+  if(!orders.length){
+
+    box.innerHTML =
+      "<p>अभी कोई order नहीं है.</p>";
+
+    return;
+
+  }
+
+  box.innerHTML = orders.map(order => `
+
+    <div class="card">
+
+      <h3>🧾 ${order.id}</h3>
+
+      <p>
+        <b>Customer:</b>
+        ${order.customer.name}
+      </p>
+
+      <p>
+        <b>Mobile:</b>
+        ${order.customer.mobile}
+      </p>
+
+      <p>
+        <b>Address:</b>
+        ${order.customer.address}
+      </p>
+
+      <hr>
+
+      ${order.items.map(item => `
+
+        <div>
+          ${item.name} × ${item.qty}
+          = ₹${item.total}
+        </div>
+
+      `).join("")}
+
+      <h3>Total: ₹${order.total}</h3>
+
+      <p>
+        Status:
+        <b>${order.status}</b>
+      </p>
+
+      <button
+        class="accept"
+        onclick="updateStatus('${order.id}','Accepted')"
+      >
+        Accept
+      </button>
+
+      <button
+        class="preparing"
+        onclick="updateStatus('${order.id}','Preparing')"
+      >
+        Preparing
+      </button>
+
+      <button
+        class="delivered"
+        onclick="updateStatus('${order.id}','Delivered')"
+      >
+        Delivered
+      </button>
+
+    </div>
+
+  `).join("");
+
+}
+
+async function updateStatus(id,status){
+
+  await fetch("/api/orders/" + id,{
+
+    method:"PUT",
+
+    headers:{
+      "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+      status
+    })
+
+  });
+
+  loadOrders();
+
+}
+
+loadOrders();
+
+setInterval(loadOrders,5000);
+
+</script>
+
+</body>
+
+</html>
+EOF
+cat > index.js <<'EOF'
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+
+const app = express();
+const PORT = 3000;
+
+const productsFile = path.join(__dirname, "products.json");
+const ordersFile = path.join(__dirname, "orders.json");
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+function readJSON(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(file, JSON.stringify(fallback, null, 2));
+      return fallback;
+    }
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function saveJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
+// Products
+app.get("/api/products", (req, res) => {
+  const products = readJSON(productsFile, []);
+  res.json(products);
+});
+
+// Create order
+app.post("/api/orders", (req, res) => {
+  const { customer, items, total } = req.body;
+
+  if (!customer || !customer.name || !customer.mobile || !customer.address) {
+    return res.status(400).json({
+      success: false,
+      message: "Customer details required"
+    });
+  }
+
+  if (!items || !items.length) {
+    return res.status(400).json({
+      success: false,
+      message: "Cart empty"
+    });
+  }
+
+  const orders = readJSON(ordersFile, []);
+
+  const order = {
+    id: "ASM" + Date.now(),
+    customer,
+    items,
+    total,
+    status: "New",
+    createdAt: new Date().toISOString()
+  };
+
+  orders.unshift(order);
+  saveJSON(ordersFile, orders);
+
+  res.json({
+    success: true,
+    order
+  });
+});
+
+// Owner orders
+app.get("/api/orders", (req, res) => {
+  const orders = readJSON(ordersFile, []);
+  res.json(orders);
+});
+
+// Update order status
+app.put("/api/orders/:id", (req, res) => {
+  const orders = readJSON(ordersFile, []);
+  const order = orders.find(o => o.id === req.params.id);
+
+  if (!order) {
+    return res.status(404).json({
+      success: false,
+      message: "Order not found"
+    });
+  }
+
+  order.status = req.body.status || order.status;
+  saveJSON(ordersFile, orders);
+
+  res.json({
+    success: true,
+    order
+  });
+});
+
+app.get("/owner", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "owner.html"));
+});
+
+app.listen(PORT, () => {
+  console.log("");
+  console.log("=================================");
+  console.log("     ANJALI SUPER MART");
+  console.log("=================================");
+  console.log("Server: http://localhost:" + PORT);
+  console.log("Shop:   http://localhost:" + PORT);
+  console.log("Owner:  http://localhost:" + PORT + "/owner");
+  console.log("=================================");
+});
+EOF
+
+cat > products.json <<'EOF'
+[
+  {
+    "id": 1,
+    "name": "Tomato",
+    "category": "Vegetables",
+    "price": 20,
+    "unit": "kg",
+    "emoji": "🍅"
+  },
+  {
+    "id": 2,
+    "name": "Potato",
+    "category": "Vegetables",
+    "price": 25,
+    "unit": "kg",
+    "emoji": "🥔"
+  },
+  {
+    "id": 3,
+    "name": "Onion",
+    "category": "Vegetables",
+    "price": 30,
+    "unit": "kg",
+    "emoji": "🧅"
+  },
+  {
+    "id": 4,
+    "name": "Carrot",
+    "category": "Vegetables",
+    "price": 40,
+    "unit": "kg",
+    "emoji": "🥕"
+  },
+  {
+    "id": 5,
+    "name": "Apple",
+    "category": "Fruits",
+    "price": 120,
+    "unit": "kg",
+    "emoji": "🍎"
+  },
+  {
+    "id": 6,
+    "name": "Banana",
+    "category": "Fruits",
+    "price": 50,
+    "unit": "dozen",
+    "emoji": "🍌"
+  },
+  {
+    "id": 7,
+    "name": "Amul Milk",
+    "category": "Dairy",
+    "price": 60,
+    "unit": "litre",
+    "emoji": "🥛"
+  },
+  {
+    "id": 8,
+    "name": "Paneer",
+    "category": "Dairy",
+    "price": 90,
+    "unit": "200g",
+    "emoji": "🧀"
+  },
+  {
+    "id": 9,
+    "name": "Lays",
+    "category": "Snacks",
+    "price": 20,
+    "unit": "pack",
+    "emoji": "🥔"
+  },
+  {
+    "id": 10,
+    "name": "Biscuits",
+    "category": "Snacks",
+    "price": 30,
+    "unit": "pack",
+    "emoji": "🍪"
+  },
+  {
+    "id": 11,
+    "name": "Cooking Oil",
+    "category": "Grocery",
+    "price": 140,
+    "unit": "litre",
+    "emoji": "🫗"
+  },
+  {
+    "id": 12,
+    "name": "Rice",
+    "category": "Grocery",
+    "price": 65,
+    "unit": "kg",
+    "emoji": "🍚"
+  }
+]
+EOF
+
+cat > orders.json <<'EOF'
+[]
+EOF
+
+cat > public/index.html <<'EOF'
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Anjali Super Mart</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f6f7;
+  color:#222;
+  padding-bottom:90px;
+}
+
+header{
+  background:#0b8f45;
+  color:white;
+  padding:14px;
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.logo{
+  font-size:21px;
+  font-weight:bold;
+}
+
+.location{
+  font-size:12px;
+  margin-top:4px;
+}
+
+.cartTop{
+  background:white;
+  color:#0b8f45;
+  border:0;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+.search{
+  margin-top:12px;
+  width:100%;
+  padding:13px;
+  border:0;
+  border-radius:10px;
+  font-size:15px;
+  outline:none;
+}
+
+.banner{
+  margin:12px;
+  padding:20px;
+  border-radius:15px;
+  background:#dff7e8;
+}
+
+.banner h2{
+  color:#08783a;
+  margin-bottom:6px;
+}
+
+.categories{
+  display:flex;
+  gap:9px;
+  overflow-x:auto;
+  padding:5px 12px 12px;
+}
+
+.cat{
+  background:white;
+  border:1px solid #ddd;
+  padding:9px 13px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+
+.cat.active{
+  background:#0b8f45;
+  color:white;
+}
+
+.title{
+  padding:5px 12px 10px;
+  font-size:20px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  padding:0 12px;
+}
+
+.card{
+  background:white;
+  border-radius:13px;
+  padding:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+
+.pic{
+  height:100px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:58px;
+  background:#fafafa;
+  border-radius:10px;
+}
+
+.name{
+  font-weight:bold;
+  margin-top:10px;
+}
+
+.unit{
+  color:#777;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.price{
+  font-weight:bold;
+  font-size:17px;
+  margin-top:7px;
+}
+
+.add{
+  width:100%;
+  margin-top:8px;
+  padding:9px;
+  border:1px solid #0b8f45;
+  background:white;
+  color:#0b8f45;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+.add:hover{
+  background:#0b8f45;
+  color:white;
+}
+
+.bottomCart{
+  position:fixed;
+  bottom:12px;
+  left:12px;
+  right:12px;
+  background:#0b8f45;
+  color:white;
+  padding:15px;
+  border-radius:13px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 4px 15px rgba(0,0,0,.25);
+  z-index:30;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:50;
+  overflow:auto;
+}
+
+.modalBox{
+  background:white;
+  margin:30px auto;
+  width:94%;
+  max-width:500px;
+  border-radius:16px;
+  padding:18px;
+}
+
+.close{
+  float:right;
+  border:0;
+  background:#eee;
+  width:35px;
+  height:35px;
+  border-radius:50%;
+}
+
+.cartItem{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #eee;
+}
+
+.qty{
+  display:flex;
+  gap:7px;
+  align-items:center;
+}
+
+.qty button{
+  width:30px;
+  height:30px;
+  border:0;
+  border-radius:7px;
+  background:#0b8f45;
+  color:white;
+}
+
+.form input,
+.form textarea{
+  width:100%;
+  margin-top:10px;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:9px;
+  font-size:15px;
+}
+
+.form textarea{
+  min-height:80px;
+}
+
+.place{
+  width:100%;
+  margin-top:15px;
+  padding:14px;
+  border:0;
+  border-radius:10px;
+  background:#0b8f45;
+  color:white;
+  font-size:16px;
+  font-weight:bold;
+}
+
+.empty{
+  text-align:center;
+  padding:30px;
+  color:#777;
+}
+
+@media(min-width:700px){
+  .grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="top">
+
+<div>
+<div class="logo">🛒 Anjali Super Mart</div>
+<div class="location">📍 Amanora, Hadapsar, Pune</div>
+</div>
+
+<button class="cartTop" onclick="openCart()">
+🛒 Cart <span id="cartCount">0</span>
+</button>
+
+</div>
+
+<input
+id="search"
+class="search"
+placeholder="🔍 Search vegetables, fruits, grocery..."
+oninput="renderProducts()"
+>
+
+</header>
+
+<div class="banner">
+
+<h2>Daily Grocery 🛍️</h2>
+
+<p>Fresh products • Best prices • Easy ordering</p>
+
+</div>
+
+<div class="categories" id="categories"></div>
+
+<h2 class="title">Products</h2>
+
+<div class="grid" id="products"></div>
+
+<div class="bottomCart" onclick="openCart()">
+
+<div>
+🛒 <b><span id="bottomCount">0</span> Items</b>
+</div>
+
+<div>
+₹<span id="bottomTotal">0</span> → View Cart
+</div>
+
+</div>
+
+<!-- CART -->
+
+<div class="modal" id="cartModal">
+
+<div class="modalBox">
+
+<button class="close" onclick="closeCart()">✕</button>
+
+<h2>🛒 Your Cart</h2>
+
+<div id="cartItems"></div>
+
+<h3 style="margin-top:15px">
+Total: ₹<span id="cartTotal">0</span>
+</h3>
+
+<div class="form">
+
+<h3 style="margin-top:20px">Delivery Details</h3>
+
+<input id="customerName" placeholder="Your Name">
+
+<input id="customerMobile" placeholder="Mobile Number" type="tel">
+
+<textarea id="customerAddress" placeholder="Delivery Address"></textarea>
+
+<button class="place" onclick="placeOrder()">
+📲 Place Order
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let products = [];
+let cart = [];
+let selectedCategory = "All";
+
+async function loadProducts(){
+
+  const res = await fetch("/api/products");
+
+  products = await res.json();
+
+  createCategories();
+
+  renderProducts();
+
+}
+
+function createCategories(){
+
+  const categories = ["All", ...new Set(products.map(p => p.category))];
+
+  const box = document.getElementById("categories");
+
+  box.innerHTML = categories.map(cat => `
+
+    <button
+      class="cat ${cat === selectedCategory ? "active" : ""}"
+      onclick="selectCategory('${cat}')"
+    >
+      ${cat}
+    </button>
+
+  `).join("");
+
+}
+
+function selectCategory(category){
+
+  selectedCategory = category;
+
+  createCategories();
+
+  renderProducts();
+
+}
+
+function renderProducts(){
+
+  const search = document
+    .getElementById("search")
+    .value
+    .toLowerCase();
+
+  let list = products.filter(p => {
+
+    const categoryMatch =
+      selectedCategory === "All" ||
+      p.category === selectedCategory;
+
+    const searchMatch =
+      p.name.toLowerCase().includes(search);
+
+    return categoryMatch && searchMatch;
+
+  });
+
+  const box = document.getElementById("products");
+
+  if(!list.length){
+
+    box.innerHTML =
+      `<div class="empty">Product नहीं मिला</div>`;
+
+    return;
+
+  }
+
+  box.innerHTML = list.map(p => `
+
+    <div class="card">
+
+      <div class="pic">${p.emoji}</div>
+
+      <div class="name">${p.name}</div>
+
+      <div class="unit">${p.unit}</div>
+
+      <div class="price">₹${p.price}</div>
+
+      <button class="add" onclick="addToCart(${p.id})">
+        + Add
+      </button>
+
+    </div>
+
+  `).join("");
+
+}
+
+function addToCart(id){
+
+  const product = products.find(p => p.id === id);
+
+  const existing = cart.find(item => item.id === id);
+
+  if(existing){
+
+    existing.qty++;
+
+  }else{
+
+    cart.push({
+      ...product,
+      qty:1
+    });
+
+  }
+
+  updateCart();
+
+}
+
+function increase(id){
+
+  const item = cart.find(i => i.id === id);
+
+  if(item){
+    item.qty++;
+  }
+
+  updateCart();
+
+  renderCart();
+
+}
+
+function decrease(id){
+
+  const item = cart.find(i => i.id === id);
+
+  if(!item) return;
+
+  item.qty--;
+
+  if(item.qty <= 0){
+
+    cart = cart.filter(i => i.id !== id);
+
+  }
+
+  updateCart();
+
+  renderCart();
+
+}
+
+function updateCart(){
+
+  const count =
+    cart.reduce((sum,item) => sum + item.qty,0);
+
+  const total =
+    cart.reduce((sum,item) => sum + item.price * item.qty,0);
+
+  document.getElementById("cartCount").textContent = count;
+
+  document.getElementById("bottomCount").textContent = count;
+
+  document.getElementById("bottomTotal").textContent = total;
+
+}
+
+function openCart(){
+
+  document.getElementById("cartModal").style.display = "block";
+
+  renderCart();
+
+}
+
+function closeCart(){
+
+  document.getElementById("cartModal").style.display = "none";
+
+}
+
+function renderCart(){
+
+  const box =
+    document.getElementById("cartItems");
+
+  if(!cart.length){
+
+    box.innerHTML =
+      `<div class="empty">Cart खाली है 🛒</div>`;
+
+    document.getElementById("cartTotal").textContent = "0";
+
+    return;
+
+  }
+
+  let total = 0;
+
+  box.innerHTML = cart.map(item => {
+
+    const itemTotal = item.price * item.qty;
+
+    total += itemTotal;
+
+    return `
+
+      <div class="cartItem">
+
+        <div>
+
+          <b>${item.emoji} ${item.name}</b>
+
+          <div>₹${item.price} × ${item.qty}</div>
+
+        </div>
+
+        <div class="qty">
+
+          <button onclick="decrease(${item.id})">−</button>
+
+          <b>${item.qty}</b>
+
+          <button onclick="increase(${item.id})">+</button>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join("");
+
+  document.getElementById("cartTotal").textContent = total;
+
+}
+
+async function placeOrder(){
+
+  if(!cart.length){
+
+    alert("Cart खाली है");
+
+    return;
+
+  }
+
+  const name =
+    document.getElementById("customerName").value.trim();
+
+  const mobile =
+    document.getElementById("customerMobile").value.trim();
+
+  const address =
+    document.getElementById("customerAddress").value.trim();
+
+  if(!name || !mobile || !address){
+
+    alert("Name, Mobile और Address भरें");
+
+    return;
+
+  }
+
+  const total =
+    cart.reduce(
+      (sum,item) => sum + item.price * item.qty,
+      0
+    );
+
+  const orderItems = cart.map(item => ({
+
+    id:item.id,
+    name:item.name,
+    price:item.price,
+    unit:item.unit,
+    qty:item.qty,
+    total:item.price * item.qty
+
+  }));
+
+  try{
+
+    const response = await fetch("/api/orders",{
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({
+
+        customer:{
+          name,
+          mobile,
+          address
+        },
+
+        items:orderItems,
+
+        total
+
+      })
+
+    });
+
+    const data = await response.json();
+
+    if(!data.success){
+
+      alert(data.message || "Order नहीं हुआ");
+
+      return;
+
+    }
+
+    const order = data.order;
+
+    let message =
+      `🛒 *Anjali Super Mart Order*%0A%0A`;
+
+    message +=
+      `Order ID: ${order.id}%0A`;
+
+    message +=
+      `Name: ${name}%0A`;
+
+    message +=
+      `Mobile: ${mobile}%0A`;
+
+    message +=
+      `Address: ${address}%0A%0A`;
+
+    message += `*Items:*%0A`;
+
+    orderItems.forEach(item => {
+
+      message +=
+        `${item.name} × ${item.qty} = ₹${item.total}%0A`;
+
+    });
+
+    message += `%0A*Total: ₹${total}*`;
+
+    const whatsapp =
+      "https://wa.me/916375889488?text=" + message;
+
+    alert(
+      "Order Successfully Placed ✅\n\nOrder ID: " +
+      order.id
+    );
+
+    cart = [];
+
+    updateCart();
+
+    closeCart();
+
+    window.open(whatsapp,"_blank");
+
+  }catch(error){
+
+    console.error(error);
+
+    alert(
+      "Server से connection नहीं हुआ ❌"
+    );
+
+  }
+
+}
+
+loadProducts();
+
+</script>
+
+</body>
+</html>
+EOF
+
+cat > public/owner.html <<'EOF'
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
+>
+
+<title>Anjali Super Mart - Owner</title>
+
+<style>
+
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f6f7;
+  margin:0;
+}
+
+header{
+  background:#0b8f45;
+  color:white;
+  padding:18px;
+}
+
+.container{
+  padding:15px;
+  max-width:900px;
+  margin:auto;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:12px;
+  box-shadow:0 2px 8px #ddd;
+}
+
+.status{
+  padding:7px;
+  border-radius:7px;
+  margin-top:10px;
+}
+
+button{
+  padding:9px 12px;
+  border:0;
+  border-radius:7px;
+  margin:4px;
+}
+
+.accept{
+  background:#0b8f45;
+  color:white;
+}
+
+.preparing{
+  background:#ffb000;
+}
+
+.delivered{
+  background:#333;
+  color:white;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>👨‍💼 Anjali Super Mart</h2>
+
+<p>Owner Order Panel</p>
+
+</header>
+
+<div class="container">
+
+<h2>Orders</h2>
+
+<div id="orders">Loading...</div>
+
+</div>
+
+<script>
+
+async function loadOrders(){
+
+  const res = await fetch("/api/orders");
+
+  const orders = await res.json();
+
+  const box = document.getElementById("orders");
+
+  if(!orders.length){
+
+    box.innerHTML =
+      "<p>अभी कोई order नहीं है.</p>";
+
+    return;
+
+  }
+
+  box.innerHTML = orders.map(order => `
+
+    <div class="card">
+
+      <h3>🧾 ${order.id}</h3>
+
+      <p>
+        <b>Customer:</b>
+        ${order.customer.name}
+      </p>
+
+      <p>
+        <b>Mobile:</b>
+        ${order.customer.mobile}
+      </p>
+
+      <p>
+        <b>Address:</b>
+        ${order.customer.address}
+      </p>
+
+      <hr>
+
+      ${order.items.map(item => `
+
+        <div>
+          ${item.name} × ${item.qty}
+          = ₹${item.total}
+        </div>
+
+      `).join("")}
+
+      <h3>Total: ₹${order.total}</h3>
+
+      <p>
+        Status:
+        <b>${order.status}</b>
+      </p>
+
+      <button
+        class="accept"
+        onclick="updateStatus('${order.id}','Accepted')"
+      >
+        Accept
+      </button>
+
+      <button
+        class="preparing"
+        onclick="updateStatus('${order.id}','Preparing')"
+      >
+        Preparing
+      </button>
+
+      <button
+        class="delivered"
+        onclick="updateStatus('${order.id}','Delivered')"
+      >
+        Delivered
+      </button>
+
+    </div>
+
+  `).join("");
+
+}
+
+async function updateStatus(id,status){
+
+  await fetch("/api/orders/" + id,{
+
+    method:"PUT",
+
+    headers:{
+      "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+      status
+    })
+
+  });
+
+  loadOrders();
+
+}
+
+loadOrders();
+
+setInterval(loadOrders,5000);
+
+</script>
+
+</body>
+
+</html>
+EOF
+
+echo "================================="
+echo "Shop:  http://localhost:3000"
+echo "Owner: http://localhost:3000/owner"
+echo "================================="
+

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anjali Super Mart Owner</title>
+
+<style>
+body{
+font-family:Arial,sans-serif;
+background:#f4f5f6;
+margin:0
+}
+header{
+background:#0b8f45;
+color:white;
+padding:18px
+}
+main{
+max-width:900px;
+margin:auto;
+padding:15px
+}
+.card{
+background:white;
+padding:15px;
+border-radius:12px;
+margin-bottom:12px;
+box-shadow:0 2px 8px #ddd
+}
+button{
+padding:9px 12px;
+border:0;
+border-radius:7px;
+margin:3px
+}
+.accept{background:#0b8f45;color:white}
+.prep{background:#ffb000}
+.done{background:#222;color:white}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>👨‍💼 Anjali Super Mart</h2>
+<p>Owner Order Panel</p>
+</header>
+
+<main>
+<h2>📋 Orders</h2>
+<div id="orders">Loading...</div>
+</main>
+
+<script>
+
+async function load(){
+
+const r=await fetch("/api/orders");
+const orders=await r.json();
+
+const box=document.getElementById("orders");
+
+if(!orders.length){
+box.innerHTML="<div class='card'>अभी कोई order नहीं है.</div>";
+return;
+}
+
+box.innerHTML=orders.map(o=>`
+
+<div class="card">
+
+<h3>🧾 ${o.id}</h3>
+
+<p><b>Name:</b> ${o.customer.name}</p>
+<p><b>Mobile:</b> ${o.customer.mobile}</p>
+<p><b>Address:</b> ${o.customer.address}</p>
+
+<hr>
+
+${o.items.map(x=>`
+<div>
+${x.name} × ${x.qty} = ₹${x.total}
+</div>
+`).join("")}
+
+<h3>Total: ₹${o.total}</h3>
+
+<p>
+Status: <b>${o.status}</b>
+</p>
+
+<button class="accept"
+onclick="status('${o.id}','Accepted')">
+Accept
+</button>
+
+<button class="prep"
+onclick="status('${o.id}','Preparing')">
+Preparing
+</button>
+
+<button class="done"
+onclick="status('${o.id}','Delivered')">
+Delivered
+</button>
+
+</div>
+
+`).join("");
+}
+
+async function status(id,value){
+
+await fetch("/api/orders/"+id,{
+method:"PUT",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({status:value})
+});
+
+load();
+}
+
+load();
+setInterval(load,5000);
+
+</script>
+
+</body>
+</html>
