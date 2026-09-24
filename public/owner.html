@@ -3,171 +3,398 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Anjali Super Mart Owner</title>
+<title>Anjali Super Mart - Owner</title>
 
 <style>
 body{
-font-family:Arial,sans-serif;
-background:#f4f5f6;
-margin:0
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#111;
+  color:white;
 }
 header{
-background:#0b8f45;
-color:white;
-padding:18px
+  background:#087b3e;
+  padding:25px 18px;
 }
-main{
-max-width:900px;
-margin:auto;
-padding:15px
+header h1{
+  margin:0;
+  font-size:28px;
 }
-.card{
-background:white;
-padding:15px;
-border-radius:12px;
-margin-bottom:12px;
-box-shadow:0 2px 8px #ddd
+header p{
+  font-size:18px;
+}
+#orders{
+  padding:15px;
+}
+.order{
+  background:#222;
+  border-radius:14px;
+  padding:16px;
+  margin:15px 0;
+  border:1px solid #444;
+}
+.name{
+  font-size:21px;
+  font-weight:bold;
+}
+.info{
+  margin:8px 0;
+  color:#ddd;
 }
 button{
-padding:9px 12px;
-border:0;
-border-radius:7px;
-margin:3px
+  border:0;
+  border-radius:8px;
+  padding:12px 14px;
+  margin:5px 3px;
+  font-size:15px;
 }
-.accept{background:#0b8f45;color:white}
-.prep{background:#ffb000}
-.done{background:#222;color:white}
+.accept{
+  background:#2196f3;
+  color:white;
+}
+.prep{
+  background:#ff9800;
+  color:white;
+}
+.done{
+  background:#18a558;
+  color:white;
+}
+#popup{
+  display:none;
+  position:fixed;
+  top:20px;
+  left:15px;
+  right:15px;
+  background:#087b3e;
+  color:white;
+  padding:20px;
+  border-radius:15px;
+  z-index:9999;
+  box-shadow:0 5px 25px #000;
+}
+#popup button{
+  background:white;
+  color:#087b3e;
+  font-weight:bold;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<h2>👨‍💼 Anjali Super Mart</h2>
+<h1>👨‍💼 Anjali Super Mart</h1>
 <p>Owner Order Panel</p>
 </header>
 
-<main>
-<h2>📋 Orders</h2>
-<div id="orders">Loading...</div>
-</main>
+<div id="popup">
+  <h2>🔔 नया ऑर्डर आया!</h2>
+  <p id="popupText"></p>
+  <button onclick="closePopup()">देख लिया</button>
+</div>
+
+<div id="orders">
+<h2>📋 ऑर्डर</h2>
+<div id="list">ऑर्डर लोड हो रहे हैं...</div>
+</div>
 
 <script>
 
-async function load(){
-
-const r=await fetch("/api/orders");
-const orders=await r.json();
-
-const box=document.getElementById("orders");
-
-if(!orders.length){
-box.innerHTML="<div class='card'>अभी कोई order नहीं है.</div>";
-return;
-}
-
-box.innerHTML=orders.map(o=>`
-
-<div class="card">
-
-<h3>🧾 ${o.id}</h3>
-
-<p><b>Name:</b> ${o.customer.name}</p>
-<p><b>Mobile:</b> ${o.customer.mobile}</p>
-<p><b>Address:</b> ${o.customer.address}</p>
-
-<hr>
-
-${o.items.map(x=>`
-<div>
-${x.name} × ${x.qty} = ₹${x.total}
-</div>
-`).join("")}
-
-<h3>Total: ₹${o.total}</h3>
-
-<p>
-Status: <b>${o.status}</b>
-</p>
-
-<button class="accept"
-onclick="status('${o.id}','Accepted')">
-Accept
-</button>
-
-<button class="prep"
-onclick="status('${o.id}','Preparing')">
-Preparing
-</button>
-
-<button class="done"
-onclick="status('${o.id}','Delivered')">
-Delivered
-</button>
-
-</div>
-
-`).join("");
-}
-
-async function status(id,value){
-
-await fetch("/api/orders/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({status:value})
-});
-
-load();
-}
-
-<script>
 let lastOrderId = null;
+let firstLoad = true;
 
-async function checkNewOrders(){
+async function loadOrders(){
+
   try{
-    const r = await fetch("/api/orders");
-    const orders = await r.json();
 
-    if(!orders.length) return;
+    const response = await fetch("/api/orders?_=" + Date.now());
 
-    const newest = orders[0];
+    const orders = await response.json();
 
-    if(lastOrderId === null){
-      lastOrderId = newest.id;
+    if(!orders.length){
+      document.getElementById("list").innerHTML =
+      "<p>अभी कोई ऑर्डर नहीं है।</p>";
       return;
     }
 
-    if(newest.id !== lastOrderId){
+    const newest = orders[0];
+
+    /*
+      पहली बार पेज खोलने पर पुराने ऑर्डर को
+      नया ऑर्डर मानकर अलर्ट नहीं करेगा।
+    */
+    if(firstLoad){
+      lastOrderId = newest.id;
+      firstLoad = false;
+    }
+
+    /*
+      नया ऑर्डर आया
+    */
+    else if(newest.id !== lastOrderId){
+
       lastOrderId = newest.id;
 
-      alert(
-        "🔔 NEW ORDER!\n\n" +
-        "Customer: " + newest.customer.name +
-        "\nMobile: " + newest.customer.mobile +
-        "\nTotal: ₹" + newest.total +
-        "\nOrder ID: " + newest.id
-      );
-
-      if("Notification" in window){
-        if(Notification.permission === "granted"){
-          new Notification("🔔 Anjali Super Mart",{
-            body:"New order received from " + newest.customer.name
-          });
-        }
-      }
+      showNewOrder(newest);
     }
-  }catch(e){
-    console.log("Order check error:",e.message);
+
+    document.getElementById("list").innerHTML =
+    orders.map(o => `
+
+      <div class="order">
+
+        <div class="name">
+          🛒 ऑर्डर #${o.id}
+        </div>
+
+        <div class="info">
+          👤 ग्राहक: ${o.customer?.name || "-"}
+        </div>
+
+        <div class="info">
+  📞 मोबाइल:
+  ${o.customer?.mobile || "-"}
+  
+  ${
+    o.customer?.mobile
+      ? `
+        <a
+          href="tel:${o.customer.mobile}"
+          style="
+            display:inline-block;
+            margin-left:8px;
+            padding:9px 13px;
+            background:#18a558;
+            color:white;
+            border-radius:8px;
+            text-decoration:none;
+            font-weight:bold;
+          "
+        >
+          📞 कॉल करें
+        </a>
+      `
+      : ""
   }
+</div>
+        </div>
+
+        <div class="info">
+          📍 पता: ${o.customer?.address || "-"}
+        </div>
+
+        <div class="info">
+          💰 कुल: ₹${o.total || 0}
+        </div>
+
+        <div class="info">
+          📌 स्थिति:
+          <b>${o.status || "New"}</b>
+        </div>
+
+        <button
+          class="accept"
+          onclick="changeStatus('${o.id}','Accepted')">
+          स्वीकार
+        </button>
+
+        <button
+          class="prep"
+          onclick="changeStatus('${o.id}','Preparing')">
+          तैयारी
+        </button>
+
+        <button
+          class="done"
+          onclick="changeStatus('${o.id}','Delivered')">
+          डिलीवर
+        </button>
+
+      </div>
+
+    `).join("");
+
+  }
+
+  catch(error){
+
+    document.getElementById("list").innerHTML =
+    "<p>❌ ऑर्डर लोड नहीं हो रहा है।</p>";
+
+    console.log(error);
+
+  }
+
 }
 
-if("Notification" in window && Notification.permission === "default"){
-  Notification.requestPermission();
+
+/*
+  नया ऑर्डर अलर्ट
+*/
+function showNewOrder(order){
+
+  const customer =
+  order.customer?.name || "ग्राहक";
+
+  const total =
+  order.total || 0;
+
+  document.getElementById("popupText").innerText =
+  "ग्राहक: " + customer +
+  "\nकुल राशि: ₹" + total;
+
+  document.getElementById("popup").style.display =
+  "block";
+
+  /*
+    मोबाइल notification
+  */
+  if(
+    "Notification" in window &&
+    Notification.permission === "granted"
+  ){
+
+    new Notification("🔔 Anjali Super Mart",{
+
+      body:
+      "नया ऑर्डर आया है\n" +
+      "ग्राहक: " + customer +
+      "\nकुल: ₹" + total
+
+    });
+
+  }
+
+  /*
+    आवाज
+  */
+  speakNewOrder();
+
 }
 
-checkNewOrders();
-setInterval(checkNewOrders,3000);
+
+/*
+  आवाज
+*/
+function speakNewOrder(){
+
+  try{
+
+    const text =
+    "Anjali Super Mart, नया ऑर्डर आया है";
+
+    const speech =
+    new SpeechSynthesisUtterance(text);
+
+    speech.lang = "hi-IN";
+    speech.rate = 0.9;
+    speech.volume = 1;
+
+    window.speechSynthesis.cancel();
+
+    window.speechSynthesis.speak(speech);
+
+  }
+
+  catch(e){
+
+    console.log(e);
+
+  }
+
+}
+
+
+/*
+  Popup बंद
+*/
+function closePopup(){
+
+  document.getElementById("popup").style.display =
+  "none";
+
+}
+
+
+/*
+  ऑर्डर की स्थिति बदलना
+*/
+async function changeStatus(id,value){
+
+  try{
+
+    await fetch("/api/orders/" + id,{
+
+      method:"PUT",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({
+        status:value
+      })
+
+    });
+
+    loadOrders();
+
+  }
+
+  catch(e){
+
+    alert("स्थिति बदलने में समस्या हुई");
+
+  }
+
+}
+
+
+/*
+  Notification permission
+*/
+async function enableNotifications(){
+
+  if(!("Notification" in window)){
+
+    return;
+
+  }
+
+  if(Notification.permission === "default"){
+
+    try{
+
+      await Notification.requestPermission();
+
+    }
+
+    catch(e){
+
+      console.log(e);
+
+    }
+
+  }
+
+}
+
+
+/*
+  शुरू
+*/
+enableNotifications();
+
+loadOrders();
+
+
+/*
+  हर 3 सेकंड नया ऑर्डर चेक
+*/
+setInterval(loadOrders,3000);
+
 </script>
 
-
+</body>
+</html>
